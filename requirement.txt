@@ -8,3 +8,4 @@ matplotlib
 seaborn
 xgboost
 scikit-learn
+pvlib

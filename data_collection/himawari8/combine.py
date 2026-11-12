@@ -16,24 +16,30 @@ DATA_ROOT = Path(
 if not DATA_ROOT.is_absolute():
     DATA_ROOT = SCRIPT_DIR / DATA_ROOT
 
-CLP_DIR = DATA_ROOT.resolve() / "CLP"
-INPUT_DIR = CLP_DIR / "monthly_csv"
+PRODUCTS = ("ARP", "CLP")
 SORT_COLUMN = "malaysia_datetime"
-OUTPUT_GROUPS = {
-    "CLP_2016_2020.csv": set(range(2016, 2021)),
-    "CLP_2026.csv": {2026},
+YEAR_GROUPS = {
+    "2016_2020": set(range(2016, 2021)),
+    "2026": {2026},
 }
 
 
-def combine_monthly_csv() -> None:
-    csv_files = sorted(INPUT_DIR.rglob("*.csv"))
+def combine_monthly_csv(product: str = "CLP") -> None:
+    """Combine monthly CSVs for one product into year-grouped CSV files."""
+    if product not in PRODUCTS:
+        raise ValueError(f"Unsupported Himawari-8 product: {product!r}")
+
+    product_dir = DATA_ROOT.resolve() / product
+    input_dir = product_dir / "monthly_csv"
+    csv_files = sorted(input_dir.rglob("*.csv"))
     if not csv_files:
-        raise FileNotFoundError(f"No CSV files found in {INPUT_DIR}")
+        raise FileNotFoundError(f"No CSV files found in {input_dir}")
 
     header: list[str] | None = None
     sort_index: int | None = None
     records: dict[str, list[tuple[datetime, list[str]]]] = {
-        filename: [] for filename in OUTPUT_GROUPS
+        f"{product}_{year_group}.csv": []
+        for year_group in YEAR_GROUPS
     }
 
     for csv_file in csv_files:
@@ -71,17 +77,18 @@ def combine_monthly_csv() -> None:
                         f"at line {line_number}: {row[sort_index]!r}"
                     ) from error
 
-                for filename, years in OUTPUT_GROUPS.items():
+                for year_group, years in YEAR_GROUPS.items():
                     if malaysia_time.year in years:
+                        filename = f"{product}_{year_group}.csv"
                         records[filename].append((malaysia_time, row))
 
     if header is None or sort_index is None:
         raise RuntimeError("No CSV header was read")
 
-    CLP_DIR.mkdir(parents=True, exist_ok=True)
+    product_dir.mkdir(parents=True, exist_ok=True)
     for filename, group_records in records.items():
         group_records.sort(key=lambda record: record[0])
-        output_file = CLP_DIR / filename
+        output_file = product_dir / filename
         with output_file.open("w", newline="", encoding="utf-8") as destination:
             writer = csv.writer(destination)
             writer.writerow(header)
@@ -94,4 +101,18 @@ def combine_monthly_csv() -> None:
 
 
 if __name__ == "__main__":
-    combine_monthly_csv()
+    available_products = []
+    for product in PRODUCTS:
+        input_dir = DATA_ROOT.resolve() / product / "monthly_csv"
+        if sorted(input_dir.rglob("*.csv")):
+            available_products.append(product)
+        else:
+            print(f"Skipping {product}: no monthly CSV files found in {input_dir}")
+
+    if not available_products:
+        raise FileNotFoundError(
+            f"No monthly Himawari-8 CSV files found under {DATA_ROOT.resolve()}"
+        )
+
+    for product in available_products:
+        combine_monthly_csv(product)
