@@ -4,3 +4,5 @@ pandas
 numpy
 netCDF4
 h5netcdf
+matplotlib
+seaborn
