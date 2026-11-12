@@ -1,2 +1,6 @@
 notebook
+xarray
 pandas
+numpy
+netCDF4
+h5netcdf
