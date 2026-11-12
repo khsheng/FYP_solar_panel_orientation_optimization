@@ -3,3 +3,6 @@ dataset/
 
 # Ignore the configuration file for Himawari-8 data collection
 data_collection/himawari8/config.txt
+
+# Trained model outputs
+model_training/irradiance_prediction/models/
